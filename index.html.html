@@ -1,0 +1,2019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CodeLab — C & Python Practice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+
+<style>
+/* ================================================
+   CSS VARIABLES — VS Code-inspired dark palette
+   ================================================ */
+:root {
+  --actbar:     #333333;
+  --sidebar:    #252526;
+  --titlebar:   #3c3c3c;
+  --ed-bg:      #1e1e1e;
+  --ed-gutter:  #2d2d2d;
+  --ed-border:  #3e3e42;
+  --ed-active:  #264f78;
+  --surface:    #252526;
+  --surface2:   #2d2d2d;
+  --statusbar:  #007acc;
+  --text:       #d4d4d4;
+  --text-dim:   #858585;
+  --text-bright:#ffffff;
+  --tok-keyword:#569cd6;
+  --tok-fn:     #dcdcaa;
+  --tok-string: #ce9178;
+  --tok-comment:#6a9955;
+  --tok-number: #b5cea8;
+  --tok-type:   #4ec9b0;
+  --tok-macro:  #c586c0;
+  --accent:     #007acc;
+  --accent2:    #4ec9b0;
+  --accent-c:   #569cd6;
+  --accent-py:  #f7c948;
+  --ok:         #4ec9b0;
+  --err:        #f44747;
+  --warn:       #cca700;
+  --radius:     4px;
+  --font-ui:    'Syne', sans-serif;
+  --font-code:  'JetBrains Mono', 'Courier New', monospace;
+}
+
+/* ================================================
+   RESET & BASE
+   ================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--ed-bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  display: flex; flex-direction: column;
+}
+
+/* ================================================
+   TITLEBAR
+   ================================================ */
+.titlebar {
+  background: var(--titlebar);
+  height: 30px;
+  display: flex; align-items: center; padding: 0 14px; gap: 8px;
+  user-select: none; flex-shrink: 0;
+  border-bottom: 1px solid #000;
+}
+.titlebar-dots { display: flex; gap: 6px; }
+.titlebar-dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot-red { background: #ff5f56; }
+.dot-yel { background: #ffbd2e; }
+.dot-grn { background: #27c93f; }
+.titlebar-name {
+  flex: 1; text-align: center;
+  font-size: .75rem; color: var(--text-dim); letter-spacing: .3px;
+}
+
+/* ================================================
+   LAYOUT
+   ================================================ */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ACTIVITY BAR */
+.actbar {
+  width: 48px; background: var(--actbar);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 0; gap: 4px;
+  border-right: 1px solid #000; flex-shrink: 0;
+}
+.actbar-icon {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius); cursor: pointer;
+  font-size: 1.1rem; color: var(--text-dim);
+  transition: color .2s, background .2s; position: relative;
+}
+.actbar-icon:hover, .actbar-icon.active {
+  color: var(--text-bright); background: rgba(255,255,255,.1);
+}
+.actbar-icon.active::before {
+  content: ''; position: absolute; left: -1px; top: 6px; bottom: 6px;
+  width: 2px; background: var(--accent); border-radius: 0 2px 2px 0;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 220px; background: var(--sidebar);
+  display: flex; flex-direction: column;
+  border-right: 1px solid #000; flex-shrink: 0; overflow-y: auto;
+}
+.sidebar-section { padding: 4px 0; }
+.sidebar-header {
+  font-size: .67rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.2px; color: var(--text-dim);
+  padding: 8px 12px 4px; display: flex; align-items: center; gap: 6px;
+}
+.lang-dot { width: 7px; height: 7px; border-radius: 50%; }
+.c-dot  { background: var(--accent-c); }
+.py-dot { background: var(--accent-py); }
+
+.sidebar-item {
+  padding: 5px 10px 5px 22px;
+  font-size: .8rem; font-family: var(--font-code);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+  color: var(--text-dim);
+  transition: background .15s, color .15s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sidebar-item:hover { background: rgba(255,255,255,.06); color: var(--text); }
+.sidebar-item.active { background: var(--ed-active); color: var(--text-bright); }
+.sidebar-item .item-icon { font-size: .8rem; flex-shrink: 0; }
+.sidebar-item .solved-dot {
+  margin-left: auto; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--ok);
+  display: none; flex-shrink: 0;
+}
+.sidebar-item.solved .solved-dot { display: block; }
+
+.score-badge {
+  margin: 8px 10px;
+  background: var(--surface2); border: 1px solid var(--ed-border);
+  border-radius: var(--radius); padding: 8px 10px; font-size: .8rem;
+}
+.sb-label { color: var(--text-dim); font-size: .68rem; margin-bottom: 3px; }
+.score-bar-wrap {
+  background: #3a3a3a; border-radius: 50px; height: 4px;
+  overflow: hidden; margin-top: 5px;
+}
+.score-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 50px; transition: width .4s ease;
+}
+.score-nums { color: var(--text-bright); font-weight: 700; font-size: .92rem; }
+
+/* EDITOR AREA */
+.editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* TABS BAR */
+.tabs-bar {
+  background: var(--sidebar); display: flex; align-items: flex-end;
+  border-bottom: 1px solid #000; height: 35px;
+  overflow-x: auto; flex-shrink: 0;
+}
+.tab {
+  height: 35px; display: flex; align-items: center; gap: 6px;
+  padding: 0 14px; font-size: .78rem; font-family: var(--font-code);
+  cursor: pointer; border-right: 1px solid #000;
+  white-space: nowrap; color: var(--text-dim); background: var(--sidebar);
+  transition: color .2s; flex-shrink: 0;
+}
+.tab:hover { color: var(--text); background: rgba(255,255,255,.04); }
+.tab.active { background: var(--ed-bg); color: var(--text-bright); border-top: 1px solid var(--accent); }
+.tab-close { font-size: .68rem; opacity: 0; transition: opacity .2s; }
+.tab:hover .tab-close { opacity: 1; }
+
+/* EDITOR SPLIT */
+.editor-split { flex: 1; display: flex; overflow: hidden; }
+
+/* MAIN COLUMN */
+.main-col { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Question panel */
+.question-panel {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--ed-border);
+  overflow-y: auto; max-height: 240px;
+  flex-shrink: 0; background: #1a1a1a;
+}
+.q-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.q-num {
+  font-family: var(--font-code); font-size: .68rem; color: var(--text-dim);
+  background: var(--surface2); border: 1px solid var(--ed-border);
+  border-radius: 3px; padding: 1px 6px;
+}
+.q-lang-badge {
+  font-size: .65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .8px; padding: 2px 7px; border-radius: 3px;
+}
+.c-badge  { background: rgba(86,156,214,.15); color: var(--accent-c); border: 1px solid rgba(86,156,214,.3); }
+.py-badge { background: rgba(247,201,72,.12); color: var(--accent-py); border: 1px solid rgba(247,201,72,.3); }
+.q-title {
+  font-size: 1.2rem; font-weight: 700; color: var(--text-bright);
+  margin-bottom: 8px; line-height: 1.3;
+}
+.q-desc { font-size: .86rem; color: var(--text); line-height: 1.7; margin-bottom: 10px; }
+.io-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.io-chip {
+  background: var(--surface2); border: 1px solid var(--ed-border);
+  border-radius: var(--radius); padding: 6px 10px; font-size: .78rem;
+}
+.io-chip .io-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .6px; color: var(--text-dim); margin-bottom: 3px; }
+.io-chip code { font-family: var(--font-code); color: var(--tok-string); font-size: .82rem; }
+
+/* Code editor */
+.code-editor-wrap {
+  flex: 1; display: flex; overflow: hidden;
+  position: relative; background: var(--ed-bg);
+}
+/* CodeMirror overrides — make it fill the wrap perfectly */
+.CodeMirror {
+  flex: 1;
+  height: 100% !important;
+  font-family: var(--font-code) !important;
+  font-size: .88rem !important;
+  line-height: 1.6 !important;
+}
+.CodeMirror-scroll { padding-bottom: 0 !important; }
+/* (gutter and code-textarea replaced by CodeMirror) */
+
+/* BOTTOM TOOLBAR */
+.bottom-toolbar {
+  background: var(--surface); border-top: 1px solid var(--ed-border);
+  padding: 8px 14px; display: flex; align-items: center; gap: 7px;
+  flex-wrap: wrap; flex-shrink: 0;
+}
+.btn {
+  font-family: var(--font-ui); font-size: .8rem; font-weight: 600;
+  border: none; cursor: pointer; padding: 6px 14px;
+  border-radius: var(--radius); display: flex; align-items: center; gap: 5px;
+  transition: opacity .15s, transform .15s; white-space: nowrap;
+}
+.btn:hover  { opacity: .88; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-run   { background: var(--ok); color: #000; }
+.btn-hint  { background: rgba(204,167,0,.18); color: var(--warn); border: 1px solid rgba(204,167,0,.4); }
+.btn-sol   { background: rgba(86,156,214,.14); color: var(--accent-c); border: 1px solid rgba(86,156,214,.3); }
+.btn-next  { background: var(--accent); color: #fff; margin-left: auto; }
+.btn-reset { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--ed-border); }
+
+/* RIGHT PANEL */
+.right-panel {
+  width: 300px; background: var(--surface);
+  border-left: 1px solid var(--ed-border);
+  display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+}
+.rp-tabs {
+  display: flex; border-bottom: 1px solid var(--ed-border);
+  background: var(--sidebar); flex-shrink: 0;
+}
+.rp-tab {
+  flex: 1; padding: 8px 4px; text-align: center;
+  font-size: .72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .5px; cursor: pointer; color: var(--text-dim);
+  border-bottom: 2px solid transparent; transition: color .2s, border-color .2s;
+}
+.rp-tab:hover { color: var(--text); }
+.rp-tab.active { color: var(--text-bright); border-bottom-color: var(--accent); }
+.rp-content {
+  flex: 1; overflow-y: auto; padding: 14px;
+  scrollbar-width: thin; scrollbar-color: #4a4a4a transparent;
+}
+
+/* Terminal / output */
+.terminal {
+  background: #0c0c0c; border: 1px solid var(--ed-border);
+  border-radius: var(--radius); padding: 10px 12px;
+  font-family: var(--font-code); font-size: .8rem;
+  min-height: 70px; line-height: 1.7; color: #cccccc;
+  white-space: pre-wrap; word-break: break-word; margin-bottom: 10px;
+}
+.term-prompt { color: var(--accent2); }
+.term-ok     { color: var(--ok); }
+.term-err    { color: var(--err); }
+.term-info   { color: var(--tok-keyword); }
+
+.expected-box {
+  background: var(--surface2); border: 1px solid var(--ed-border);
+  border-radius: var(--radius); padding: 8px 10px; margin-bottom: 10px;
+}
+.exp-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .6px; color: var(--text-dim); margin-bottom: 3px; }
+.expected-box code { font-family: var(--font-code); font-size: .82rem; color: var(--tok-string); }
+
+.hint-box {
+  background: rgba(204,167,0,.07); border: 1px solid rgba(204,167,0,.28);
+  border-radius: var(--radius); padding: 10px 12px; font-size: .83rem;
+  color: #e0c97a; line-height: 1.7; margin-bottom: 10px;
+}
+.hint-title {
+  font-weight: 700; font-size: .68rem; text-transform: uppercase;
+  letter-spacing: .6px; margin-bottom: 5px; color: var(--warn);
+}
+
+.solution-block {
+  background: #0c0c0c; border: 1px solid var(--ed-border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.sol-header {
+  background: var(--surface2); padding: 5px 10px;
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--text-dim); border-bottom: 1px solid var(--ed-border);
+}
+.solution-block pre {
+  padding: 12px; font-family: var(--font-code); font-size: .8rem;
+  line-height: 1.7; color: var(--text); overflow-x: auto; white-space: pre;
+  scrollbar-width: thin; scrollbar-color: #4a4a4a transparent;
+}
+
+/* Syntax highlight classes */
+.kw { color: var(--tok-keyword); }
+.fn { color: var(--tok-fn); }
+.cm { color: var(--tok-comment); font-style: italic; }
+.st { color: var(--tok-string); }
+.nm { color: var(--tok-number); }
+.mc { color: var(--tok-macro); }
+.ty { color: var(--tok-type); }
+
+/* STATUS BAR */
+.statusbar {
+  background: var(--statusbar); height: 22px;
+  display: flex; align-items: center; padding: 0 12px; gap: 12px;
+  font-size: .7rem; color: rgba(255,255,255,.85);
+  user-select: none; flex-shrink: 0;
+}
+.sb-sep { opacity: .3; }
+.sb-right { margin-left: auto; display: flex; gap: 12px; }
+.statusbar-c  { background: #1a4c78; }
+.statusbar-py { background: #1d5c1a; }
+
+/* WELCOME SCREEN */
+.welcome {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 40px; text-align: center; gap: 14px;
+  animation: fadeUp .4s ease;
+}
+.welcome-logo {
+  font-size: 3rem; font-weight: 800; line-height: 1;
+  color: var(--text-bright);
+}
+.welcome-logo span { color: var(--accent); }
+.welcome-sub { color: var(--text-dim); font-size: .92rem; max-width: 320px; }
+.welcome-cta { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.welcome-card {
+  background: var(--surface2); border: 1px solid var(--ed-border);
+  border-radius: 6px; padding: 12px 18px; cursor: pointer;
+  font-size: .86rem; display: flex; align-items: center; gap: 7px;
+  transition: border-color .2s, background .2s;
+}
+.welcome-card:hover { border-color: var(--accent); background: rgba(0,122,204,.1); }
+.wc-lang { font-weight: 700; font-size: .9rem; }
+
+@keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 4px; }
+
+/* Responsive */
+@media (max-width: 860px) {
+  .right-panel { width: 240px; }
+  .sidebar { width: 180px; }
+}
+@media (max-width: 640px) {
+  .actbar { display: none; }
+  .right-panel { display: none !important; }
+  .sidebar { width: 160px; }
+  .question-panel { max-height: 180px; }
+}
+@media (max-width: 460px) {
+  .sidebar { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- TITLEBAR -->
+<div class="titlebar">
+  <div class="titlebar-dots">
+    <div class="titlebar-dot dot-red"></div>
+    <div class="titlebar-dot dot-yel"></div>
+    <div class="titlebar-dot dot-grn"></div>
+  </div>
+  <div class="titlebar-name" id="titlebarName">CodeLab — Welcome</div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- ACTIVITY BAR -->
+  <div class="actbar">
+    <div class="actbar-icon active" title="Explorer">📁</div>
+    <div class="actbar-icon" title="C Questions" onclick="switchLang('c')">🔵</div>
+    <div class="actbar-icon" title="Python Questions" onclick="switchLang('py')">🐍</div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="score-badge">
+      <div class="sb-label">Score</div>
+      <div class="score-nums"><span id="sbScore">0</span> / <span id="sbTotal">6</span></div>
+      <div class="score-bar-wrap">
+        <div class="score-bar-fill" id="scoreBarFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-header"><div class="lang-dot c-dot"></div>C Programming</div>
+      <div id="cItems"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-header"><div class="lang-dot py-dot"></div>Python</div>
+      <div id="pyItems"></div>
+    </div>
+  </div>
+
+  <!-- EDITOR AREA -->
+  <div class="editor-area">
+
+    <!-- TABS BAR -->
+    <div class="tabs-bar" id="tabsBar">
+      <div class="tab active" onclick="showWelcome()">
+        <span>🏠</span> welcome.md <span class="tab-close">×</span>
+      </div>
+    </div>
+
+    <!-- EDITOR SPLIT -->
+    <div class="editor-split">
+
+      <!-- MAIN COLUMN -->
+      <div class="main-col" id="mainCol">
+
+        <!-- WELCOME SCREEN -->
+        <div class="welcome" id="welcomeScreen">
+          <div class="welcome-logo">Code<span>Lab</span></div>
+          <div class="welcome-sub">A VS Code-style coding playground for C and Python. Pick a question from the sidebar.</div>
+          <div class="welcome-cta">
+            <div class="welcome-card" onclick="switchLang('c')">
+              <span>🔵</span>
+              <span class="wc-lang" style="color:var(--accent-c)">C Programming</span>
+              <span style="color:var(--text-dim);font-size:.76rem">3 questions</span>
+            </div>
+            <div class="welcome-card" onclick="switchLang('py')">
+              <span>🐍</span>
+              <span class="wc-lang" style="color:var(--accent-py)">Python</span>
+              <span style="color:var(--text-dim);font-size:.76rem">3 questions</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- EDITOR SCREEN (hidden initially) -->
+        <div id="editorScreen" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+
+          <!-- Question panel -->
+          <div class="question-panel">
+            <div class="q-meta">
+              <span class="q-num" id="qNum">Q1</span>
+              <span class="q-lang-badge c-badge" id="qBadge">C</span>
+            </div>
+            <div class="q-title" id="qTitle"></div>
+            <div class="q-desc"  id="qDesc"></div>
+            <div class="io-row">
+              <div class="io-chip">
+                <div class="io-label">Input</div>
+                <code id="qInputEx"></code>
+              </div>
+              <div class="io-chip">
+                <div class="io-label">Expected Output</div>
+                <code id="qOutputEx"></code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Code editor — CodeMirror converts this textarea automatically -->
+          <div class="code-editor-wrap">
+            <textarea id="codeEditor"></textarea>
+          </div>
+
+          <!-- Bottom toolbar -->
+          <div class="bottom-toolbar">
+            <button class="btn btn-run"   onclick="checkCode()">▶ Run &amp; Check</button>
+            <button class="btn btn-hint"  onclick="showRPTab('hint')">💡 Hint</button>
+            <button class="btn btn-sol"   onclick="showRPTab('solution')">🔍 Solution</button>
+            <button class="btn btn-reset" onclick="resetCode()">↺ Reset</button>
+            <button class="btn btn-next"  onclick="nextQuestion()">Next →</button>
+          </div>
+
+        </div><!-- /editorScreen -->
+      </div><!-- /main-col -->
+
+      <!-- RIGHT PANEL -->
+      <div class="right-panel" id="rightPanel" style="display:none;">
+        <div class="rp-tabs">
+          <div class="rp-tab active" id="rpt-output"   onclick="showRPTab('output')">Output</div>
+          <div class="rp-tab"        id="rpt-hint"     onclick="showRPTab('hint')">Hint</div>
+          <div class="rp-tab"        id="rpt-solution" onclick="showRPTab('solution')">Solution</div>
+          <div class="rp-tab"        id="rpt-ai"       onclick="showRPTab('ai')">AI Help</div>
+        </div>
+        <div class="rp-content" id="rpContent"></div>
+      </div>
+
+    </div><!-- /editor-split -->
+  </div><!-- /editor-area -->
+</div><!-- /layout -->
+
+<!-- STATUS BAR -->
+<div class="statusbar" id="statusbar">
+  <span>⎇ main</span>
+  <span class="sb-sep">|</span>
+  <span id="sbLang">Select a question to start</span>
+  <span class="sb-sep">|</span>
+  <span id="sbStatus">Ready</span>
+  <div class="sb-right">
+    <span>UTF-8</span>
+    <span id="sbCursor">Ln 1, Col 1</span>
+  </div>
+</div>
+
+<!-- =============================================
+     JAVASCRIPT
+     ============================================= -->
+<script>
+/* =============================================
+   QUESTION DATA
+   lang       : 'c' or 'py'
+   title      : display name
+   desc       : full description
+   inputEx    : sample input shown
+   outputEx   : expected output shown
+   template   : pre-filled code in editor
+   hint       : guidance text (not full solution)
+   keywords   : array of groups; code must contain
+                at least 1 word from EACH group
+   solution   : syntax-highlighted HTML string
+   ============================================= */
+const questions = [
+
+  /* ===== BASICS ===== */
+  {
+    lang: 'c', title: 'Even or Odd',
+    desc: 'Write a C program to check whether n = 7 is Even or Odd. If the number is divisible by 2 with no remainder, print "EVEN", otherwise print "ODD".',
+    inputEx: 'n = 7', outputEx: 'ODD',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int n = 7;
+    
+    // Write your if-else condition here
+    // Use the % operator (modulus)
+    
+    return 0;
+}`,
+    hint: 'Use the modulus operator %. If n % 2 == 0 → print "EVEN", else → print "ODD". Wrap it in an if-else block.',
+    keywords: [['%'], ['if'], ['printf', 'puts']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> n = <span class="nm">7</span>;
+
+    <span class="kw">if</span> (n % <span class="nm">2</span> == <span class="nm">0</span>)       <span class="cm">// remainder 0 → even</span>
+        <span class="fn">printf</span>(<span class="st">"EVEN"</span>);
+    <span class="kw">else</span>                   <span class="cm">// remainder 1 → odd</span>
+        <span class="fn">printf</span>(<span class="st">"ODD"</span>);
+
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: ODD  (7 % 2 = 1)</span>`
+  },
+
+  {
+    lang: 'c', title: 'Factorial',
+    desc: 'Write a C program to calculate the factorial of n = 5. Factorial: 5! = 5×4×3×2×1 = 120. Use a loop to multiply each number from 1 to n.',
+    inputEx: 'n = 5', outputEx: '120',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int n = 5, result = 1;
+    
+    // Use a for loop from 1 to n
+    // Multiply result = result * i each step
+    
+    printf("%d", result);
+    return 0;
+}`,
+    hint: 'Use: for(int i = 1; i <= n; i++) { result = result * i; }  This accumulates 1×2×3×4×5 = 120 in result.',
+    keywords: [['for', 'while'], ['result', '*=', '* i', '*i'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> n = <span class="nm">5</span>, i, result = <span class="nm">1</span>;
+
+    <span class="kw">for</span> (i = <span class="nm">1</span>; i <= n; i++) {
+        result = result * i;  <span class="cm">// 1×2×3×4×5 = 120</span>
+    }
+
+    <span class="fn">printf</span>(<span class="st">"Factorial of %d = %d"</span>, n, result);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Factorial of 5 = 120</span>`
+  },
+
+  {
+    lang: 'c', title: 'Prime Number',
+    desc: 'Write a C program to check if n = 7 is PRIME or NOT PRIME. A prime number is only divisible by 1 and itself. Check all divisors from 2 to n-1.',
+    inputEx: 'n = 7', outputEx: 'PRIME',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int n = 7, isPrime = 1;
+    
+    // Loop from 2 to n-1
+    // If n % i == 0, set isPrime = 0 and break
+    
+    if (isPrime)
+        printf("PRIME");
+    else
+        printf("NOT PRIME");
+    return 0;
+}`,
+    hint: 'Use: for(int i=2; i<n; i++) { if(n%i==0){ isPrime=0; break; } }  If no number divides n evenly, it stays prime.',
+    keywords: [['for', 'while'], ['%'], ['isPrime', 'prime', 'flag', 'found']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> n = <span class="nm">7</span>, i, isPrime = <span class="nm">1</span>;  <span class="cm">// isPrime=1 means assume prime</span>
+
+    <span class="kw">if</span> (n < <span class="nm">2</span>)
+        isPrime = <span class="nm">0</span>;  <span class="cm">// 0 and 1 are not prime</span>
+
+    <span class="kw">for</span> (i = <span class="nm">2</span>; i < n; i++) {
+        <span class="kw">if</span> (n % i == <span class="nm">0</span>) {      <span class="cm">// divisor found → not prime</span>
+            isPrime = <span class="nm">0</span>;
+            <span class="kw">break</span>;              <span class="cm">// no need to check further</span>
+        }
+    }
+
+    <span class="kw">if</span> (isPrime)
+        <span class="fn">printf</span>(<span class="st">"PRIME"</span>);
+    <span class="kw">else</span>
+        <span class="fn">printf</span>(<span class="st">"NOT PRIME"</span>);
+
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: PRIME  (no divisor found for 7)</span>`
+  },
+
+  /* ===== PYTHON QUESTIONS ===== */
+  {
+    lang: 'py', title: 'Palindrome Check',
+    desc: 'Write a Python program to check if s = "racecar" is a palindrome. A palindrome reads the same forward and backward. Print "PALINDROME" or "NOT PALINDROME".',
+    inputEx: 's = "racecar"', outputEx: 'PALINDROME',
+    template:
+`# Write your code here
+
+s = "racecar"
+
+# Compare s with its reverse
+# Hint: s[::-1] reverses a string in Python
+`,
+    hint: 'In Python, s[::-1] reverses a string. Simply compare: if s == s[::-1]: print("PALINDROME"). That\'s the whole solution!',
+    keywords: [['[::-1]', 'reverse', 'reversed'], ['if'], ['print']],
+    solution:
+`<span class="cm"># s[::-1] → string ko reverse karta hai</span>
+s = <span class="st">"racecar"</span>
+
+<span class="kw">if</span> s == s[<span class="nm">::-1</span>]:       <span class="cm"># original == reverse?</span>
+    <span class="fn">print</span>(<span class="st">"PALINDROME"</span>)
+<span class="kw">else</span>:
+    <span class="fn">print</span>(<span class="st">"NOT PALINDROME"</span>)
+
+<span class="cm"># Output: PALINDROME</span>`
+  },
+
+  {
+    lang: 'py', title: 'Fibonacci Series',
+    desc: 'Write a Python program to print the first 7 Fibonacci numbers: 0 1 1 2 3 5 8. Each number is the sum of the two before it. Start with a=0, b=1.',
+    inputEx: 'n = 7', outputEx: '0 1 1 2 3 5 8',
+    template:
+`# Write your code here
+
+n = 7
+a, b = 0, 1
+
+# Use a for loop n times
+# Each iteration: print a, then update a and b
+`,
+    hint: 'Loop n times using range(n). Inside the loop: print(a, end=" "), then update: a, b = b, a + b. This shifts the window forward each step.',
+    keywords: [['for', 'while', 'range'], ['a, b', 'a,b', 'a =', 'a='], ['print']],
+    solution:
+`n = <span class="nm">7</span>
+a, b = <span class="nm">0</span>, <span class="nm">1</span>  <span class="cm"># a = current, b = next</span>
+
+<span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(n):
+    <span class="fn">print</span>(a, end=<span class="st">" "</span>)   <span class="cm"># print current number</span>
+    a, b = b, a + b    <span class="cm"># slide: a becomes b, b becomes sum</span>
+
+<span class="cm"># Output: 0 1 1 2 3 5 8</span>`
+  },
+
+  {
+    lang: 'py', title: 'Sum of Digits',
+    desc: 'Write a Python program to find the sum of all digits of n = 1234. Add each digit: 1+2+3+4 = 10. Use a loop or Python\'s built-in functions.',
+    inputEx: 'n = 1234', outputEx: '10',
+    template:
+`# Write your code here
+
+n = 1234
+total = 0
+
+# Loop through each digit of n
+# Convert n to string, then each char to int
+`,
+    hint: 'Convert the number to a string: str(n). Then loop: for d in str(n): total += int(d). Or use the one-liner: total = sum(int(d) for d in str(n)).',
+    keywords: [['str(', 'int(', 'sum(', 'total', 'digit'], ['for', 'while', 'sum('], ['print']],
+    solution:
+`n = <span class="nm">1234</span>
+total = <span class="nm">0</span>
+
+<span class="kw">for</span> d <span class="kw">in</span> <span class="fn">str</span>(n):       <span class="cm"># "1234" → '1','2','3','4'</span>
+    total += <span class="fn">int</span>(d)    <span class="cm"># char to int, then add</span>
+
+<span class="fn">print</span>(<span class="st">"Sum ="</span>, total)
+<span class="cm"># Output: Sum = 10</span>`
+  },
+
+  /* =============================================
+     GROUP: LOOPS
+     ============================================= */
+  {
+    lang: 'c', title: 'Sum of Digits (C)',
+    desc: 'Ek number ke saare digits ka sum nikalo. Jaise n=1234 → 1+2+3+4 = 10. Number ko digit-by-digit tod ke add karo.',
+    inputEx: 'n = 1234', outputEx: 'Sum = 10',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int n = 1234, sum = 0;
+
+    // Hint: n % 10 → last digit milti hai
+    // n / 10 → last digit hatt jaati hai
+
+    printf("Sum = %d", sum);
+    return 0;
+}`,
+    hint: 'while(n > 0) loop use karo. Har step mein sum += n%10 karo aur phir n /= 10 karo. Loop tab tak chale jab n > 0 ho.',
+    keywords: [['while', 'for'], ['%', 'sum'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> n = <span class="nm">1234</span>, sum = <span class="nm">0</span>;
+
+    <span class="kw">while</span> (n > <span class="nm">0</span>) {
+        sum += n % <span class="nm">10</span>;  <span class="cm">// last digit nikalo aur add karo</span>
+        n /= <span class="nm">10</span>;         <span class="cm">// last digit hata do</span>
+    }
+
+    <span class="fn">printf</span>(<span class="st">"Sum = %d"</span>, sum);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Sum = 10  (1+2+3+4)</span>`
+  },
+
+  {
+    lang: 'c', title: 'Sum of Evens 1 to N',
+    desc: '1 se N tak ke saare even numbers ka sum nikalo. Even wo numbers hain jo 2 se divide ho jaate hain. N=10 ke liye: 2+4+6+8+10 = 30.',
+    inputEx: 'n = 10', outputEx: 'Sum = 30',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int n = 10, sum = 0;
+
+    // Loop 1 se n tak
+    // Check karo: agar i % 2 == 0 to sum mein add karo
+
+    printf("Sum = %d", sum);
+    return 0;
+}`,
+    hint: 'for(int i=1; i<=n; i++) loop chalao. Andar if(i % 2 == 0) check karo — agar true hai to sum += i karo.',
+    keywords: [['for', 'while'], ['%', 'sum'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> n = <span class="nm">10</span>, i, sum = <span class="nm">0</span>;
+
+    <span class="kw">for</span> (i = <span class="nm">1</span>; i <= n; i++) {
+        <span class="kw">if</span> (i % <span class="nm">2</span> == <span class="nm">0</span>)   <span class="cm">// even number check</span>
+            sum += i;
+    }
+
+    <span class="fn">printf</span>(<span class="st">"Sum of even numbers = %d"</span>, sum);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Sum of even numbers = 30  (2+4+6+8+10)</span>`
+  },
+
+  {
+    lang: 'c', title: 'Multiplication Table',
+    desc: 'Nested loops use karke 1 se 10 tak ke multiplication tables print karo. Jaise: 1x1=1, 1x2=2 ... 10x10=100.',
+    inputEx: 'Tables 1 to 10',
+    outputEx: '1x1=1  1x2=2 ... 10x10=100',
+    template:
+`#include <stdio.h>
+
+int main() {
+    // Outer loop: 1 se 10 tak (table number)
+    // Inner loop: 1 se 10 tak (multiplier)
+    // Print: i x j = i*j
+
+    return 0;
+}`,
+    hint: 'Do nested for loops use karo. Outer: for(i=1; i<=10; i++), Inner: for(j=1; j<=10; j++). Printf se "%d x %d = %d\\n" format mein print karo.',
+    keywords: [['for'], ['*', 'printf'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> i, j;
+
+    <span class="kw">for</span> (i = <span class="nm">1</span>; i <= <span class="nm">10</span>; i++) {        <span class="cm">// table number</span>
+        <span class="fn">printf</span>(<span class="st">"--- Table of %d ---\\n"</span>, i);
+        <span class="kw">for</span> (j = <span class="nm">1</span>; j <= <span class="nm">10</span>; j++) {    <span class="cm">// multiplier</span>
+            <span class="fn">printf</span>(<span class="st">"%d x %d = %d\\n"</span>, i, j, i * j);
+        }
+        <span class="fn">printf</span>(<span class="st">"\\n"</span>);  <span class="cm">// blank line between tables</span>
+    }
+    <span class="kw">return</span> <span class="nm">0</span>;
+}`
+  },
+
+  {
+    lang: 'c', title: 'Prime Numbers 1 to N',
+    desc: '1 se N tak ke saare prime numbers print karo. Prime number woh hota hai jise sirf 1 aur khud se divide kar sako. N=20 ke liye: 2 3 5 7 11 13 17 19.',
+    inputEx: 'n = 20', outputEx: '2 3 5 7 11 13 17 19',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int n = 20;
+
+    // Outer loop: 2 se n tak har number check karo
+    // Inner loop: 2 se num-1 tak divisor dhundo
+    // isPrime flag use karo
+
+    return 0;
+}`,
+    hint: 'Nested loop use karo. Outer: for(num=2; num<=n; num++). Inner: for(i=2; i<num; i++) — if(num%i==0) isPrime=0. Baad mein if(isPrime) printf karo.',
+    keywords: [['for', 'while'], ['%', 'isPrime', 'prime', 'flag'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> n = <span class="nm">20</span>, num, i, isPrime;
+
+    <span class="kw">for</span> (num = <span class="nm">2</span>; num <= n; num++) {
+        isPrime = <span class="nm">1</span>;                      <span class="cm">// assume prime</span>
+
+        <span class="kw">for</span> (i = <span class="nm">2</span>; i < num; i++) {
+            <span class="kw">if</span> (num % i == <span class="nm">0</span>) {          <span class="cm">// divisor found</span>
+                isPrime = <span class="nm">0</span>;
+                <span class="kw">break</span>;
+            }
+        }
+
+        <span class="kw">if</span> (isPrime)
+            <span class="fn">printf</span>(<span class="st">"%d "</span>, num);         <span class="cm">// print prime</span>
+    }
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: 2 3 5 7 11 13 17 19</span>`
+  },
+
+  /* =============================================
+     GROUP: PATTERNS
+     ============================================= */
+  {
+    lang: 'c', title: 'Pattern — Decreasing Stars',
+    desc: 'N=5 ke liye yeh pattern print karo:\n*****\n****\n***\n**\n*\nHar line mein ek star kam hota jaata hai.',
+    inputEx: 'n = 5',
+    outputEx: '*****\n****\n***\n**\n*',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int n = 5;
+
+    // Outer loop: n se 1 tak (i = n down to 1)
+    // Inner loop: i baar star print karo
+    // Har outer loop ke baad newline print karo
+
+    return 0;
+}`,
+    hint: 'Outer loop: for(i=n; i>=1; i--). Inner loop: for(j=1; j<=i; j++) printf("*"). Outer loop ke end mein printf("\\n") karo.',
+    keywords: [['for'], ['*', 'printf'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> n = <span class="nm">5</span>, i, j;
+
+    <span class="kw">for</span> (i = n; i >= <span class="nm">1</span>; i--) {      <span class="cm">// i = 5,4,3,2,1 (rows)</span>
+        <span class="kw">for</span> (j = <span class="nm">1</span>; j <= i; j++) {  <span class="cm">// i stars per row</span>
+            <span class="fn">printf</span>(<span class="st">"*"</span>);
+        }
+        <span class="fn">printf</span>(<span class="st">"\\n"</span>);
+    }
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output:
+// *****
+// ****
+// ***
+// **
+// *</span>`
+  },
+
+  {
+    lang: 'c', title: 'Pattern — Increasing Stars',
+    desc: 'N=5 ke liye yeh pattern print karo:\n*\n**\n***\n****\n*****\nHar line mein ek star badhta jaata hai.',
+    inputEx: 'n = 5',
+    outputEx: '*\n**\n***\n****\n*****',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int n = 5;
+
+    // Outer loop: 1 se n tak
+    // Inner loop: i baar star print karo
+    // Har outer loop ke baad newline
+
+    return 0;
+}`,
+    hint: 'Outer loop: for(i=1; i<=n; i++). Inner loop: for(j=1; j<=i; j++) printf("*"). Outer loop ke end mein printf("\\n") karo.',
+    keywords: [['for'], ['*', 'printf'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> n = <span class="nm">5</span>, i, j;
+
+    <span class="kw">for</span> (i = <span class="nm">1</span>; i <= n; i++) {       <span class="cm">// i = 1,2,3,4,5 (rows)</span>
+        <span class="kw">for</span> (j = <span class="nm">1</span>; j <= i; j++) {   <span class="cm">// i stars per row</span>
+            <span class="fn">printf</span>(<span class="st">"*"</span>);
+        }
+        <span class="fn">printf</span>(<span class="st">"\\n"</span>);
+    }
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output:
+// *
+// **
+// ***
+// ****
+// *****</span>`
+  },
+
+  /* =============================================
+     GROUP: ARRAYS
+     ============================================= */
+  {
+    lang: 'c', title: 'Min & Max in Array',
+    desc: 'Ek array mein se sabse chhota (minimum) aur sabse bada (maximum) number dhundo. Array: {3, 1, 7, 2, 9, 4}.',
+    inputEx: '{3, 1, 7, 2, 9, 4}', outputEx: 'Min=1  Max=9',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int arr[] = {3, 1, 7, 2, 9, 4};
+    int n = 6;
+    int min = arr[0], max = arr[0];
+
+    // Loop through array
+    // Update min if arr[i] < min
+    // Update max if arr[i] > max
+
+    printf("Min=%d  Max=%d", min, max);
+    return 0;
+}`,
+    hint: 'min aur max ko arr[0] se initialize karo. Loop mein: if(arr[i] < min) min = arr[i]; aur if(arr[i] > max) max = arr[i];',
+    keywords: [['for', 'while'], ['min', 'max', 'arr', '<', '>'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> arr[] = {<span class="nm">3</span>, <span class="nm">1</span>, <span class="nm">7</span>, <span class="nm">2</span>, <span class="nm">9</span>, <span class="nm">4</span>};
+    <span class="kw">int</span> n = <span class="nm">6</span>;
+    <span class="kw">int</span> min = arr[<span class="nm">0</span>], max = arr[<span class="nm">0</span>];  <span class="cm">// pehle element se start</span>
+    <span class="kw">int</span> i;
+
+    <span class="kw">for</span> (i = <span class="nm">1</span>; i < n; i++) {
+        <span class="kw">if</span> (arr[i] < min) min = arr[i];  <span class="cm">// naya minimum mila</span>
+        <span class="kw">if</span> (arr[i] > max) max = arr[i];  <span class="cm">// naya maximum mila</span>
+    }
+
+    <span class="fn">printf</span>(<span class="st">"Min = %d\\nMax = %d"</span>, min, max);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Min = 1  Max = 9</span>`
+  },
+
+  {
+    lang: 'c', title: 'Count Vowels & Consonants',
+    desc: 'Ek string mein se vowels (a,e,i,o,u) aur consonants ki count karo. String: "Hello World".',
+    inputEx: '"Hello World"', outputEx: 'Vowels=3  Consonants=7',
+    template:
+`#include <stdio.h>
+
+int main() {
+    char str[] = "Hello World";
+    int vowels = 0, consonants = 0;
+    char ch;
+
+    // Loop through each character
+    // Check if it's a vowel: a,e,i,o,u (upper & lower)
+    // Else if it's a letter, it's a consonant
+
+    printf("Vowels=%d  Consonants=%d", vowels, consonants);
+    return 0;
+}`,
+    hint: 'for loop use karo str[i] != \'\\0\' tak. Har character ko lowercase mein convert karo (ch = tolower(str[i])). Phir if(ch==\'a\'||ch==\'e\'||ch==\'i\'||ch==\'o\'||ch==\'u\') vowels++ karo.',
+    keywords: [['for', 'while'], ['vowel', 'vowels', "'a'", "'e'"], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+<span class="mc">#include</span> <span class="st">&lt;ctype.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">char</span> str[] = <span class="st">"Hello World"</span>;
+    <span class="kw">int</span> vowels = <span class="nm">0</span>, consonants = <span class="nm">0</span>, i;
+    <span class="kw">char</span> ch;
+
+    <span class="kw">for</span> (i = <span class="nm">0</span>; str[i] != <span class="st">'\0'</span>; i++) {
+        ch = <span class="fn">tolower</span>(str[i]);  <span class="cm">// lowercase mein convert</span>
+
+        <span class="kw">if</span> (ch==<span class="st">'a'</span>||ch==<span class="st">'e'</span>||ch==<span class="st">'i'</span>||ch==<span class="st">'o'</span>||ch==<span class="st">'u'</span>)
+            vowels++;           <span class="cm">// vowel mila</span>
+        <span class="kw">else if</span> (ch >= <span class="st">'a'</span> && ch <= <span class="st">'z'</span>)
+            consonants++;       <span class="cm">// letter hai but vowel nahi → consonant</span>
+        <span class="cm">// space/symbol → ignore</span>
+    }
+
+    <span class="fn">printf</span>(<span class="st">"Vowels=%d  Consonants=%d"</span>, vowels, consonants);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Vowels=3  Consonants=7</span>`
+  },
+
+  {
+    lang: 'c', title: 'Reverse a String',
+    desc: 'Ek string ko reverse karo bina built-in function use kiye. "Hello" → "olleH". Array use karke manually reverse karo.',
+    inputEx: '"Hello"', outputEx: 'olleH',
+    template:
+`#include <stdio.h>
+#include <string.h>
+
+int main() {
+    char str[] = "Hello";
+    int n = strlen(str);
+
+    // Loop from end to start and print each character
+    // OR swap characters: str[i] with str[n-1-i]
+
+    printf("%s", str);
+    return 0;
+}`,
+    hint: 'Do pointers ya indices use karo: left=0, right=n-1. Jab tak left<right: swap(str[left], str[right]) karo aur left++, right-- karo.',
+    keywords: [['for', 'while'], ['str', 'swap', 'temp', 'reverse', '['], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+<span class="mc">#include</span> <span class="st">&lt;string.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">char</span> str[] = <span class="st">"Hello"</span>;
+    <span class="kw">int</span> n = <span class="fn">strlen</span>(str);
+    <span class="kw">int</span> left = <span class="nm">0</span>, right = n - <span class="nm">1</span>;  <span class="cm">// two-pointer technique</span>
+    <span class="kw">char</span> temp;
+
+    <span class="kw">while</span> (left < right) {
+        temp       = str[left];   <span class="cm">// swap left aur right character</span>
+        str[left]  = str[right];
+        str[right] = temp;
+        left++;
+        right--;
+    }
+
+    <span class="fn">printf</span>(<span class="st">"Reversed: %s"</span>, str);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Reversed: olleH</span>`
+  },
+
+  {
+    lang: 'c', title: 'Sum & Average of Array',
+    desc: 'Array ke saare N elements ka sum aur average nikalo. Array: {10, 20, 30, 40, 50}, N=5 ke liye Sum=150, Average=30.00.',
+    inputEx: '{10,20,30,40,50}, n=5', outputEx: 'Sum=150  Avg=30.00',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int arr[] = {10, 20, 30, 40, 50};
+    int n = 5, sum = 0;
+    float avg;
+
+    // Loop through array, sum all elements
+    // avg = sum / n
+
+    printf("Sum=%d  Avg=%.2f", sum, avg);
+    return 0;
+}`,
+    hint: 'for loop mein sum += arr[i] karo. Loop ke baad avg = (float)sum / n karo. (float) cast zaroori hai nahi to integer division hoga.',
+    keywords: [['for', 'while'], ['sum', 'avg', 'arr'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> arr[] = {<span class="nm">10</span>, <span class="nm">20</span>, <span class="nm">30</span>, <span class="nm">40</span>, <span class="nm">50</span>};
+    <span class="kw">int</span> n = <span class="nm">5</span>, sum = <span class="nm">0</span>, i;
+    <span class="kw">float</span> avg;
+
+    <span class="kw">for</span> (i = <span class="nm">0</span>; i < n; i++)
+        sum += arr[i];   <span class="cm">// saare elements add karo</span>
+
+    avg = (<span class="kw">float</span>)sum / n;  <span class="cm">// (float) cast zaroori — decimal ke liye</span>
+
+    <span class="fn">printf</span>(<span class="st">"Sum = %d\\nAverage = %.2f"</span>, sum, avg);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Sum = 150  Average = 30.00</span>`
+  },
+
+  {
+    lang: 'c', title: 'String Palindrome Check',
+    desc: 'Check karo ki string palindrome hai ya nahi. Palindrome woh string hai jo ulti bhi same hoti hai. "madam" → PALINDROME, "hello" → NOT PALINDROME.',
+    inputEx: '"madam"', outputEx: 'PALINDROME',
+    template:
+`#include <stdio.h>
+#include <string.h>
+
+int main() {
+    char str[] = "madam";
+    int n = strlen(str);
+    int isPalin = 1;
+
+    // Compare str[0] with str[n-1], str[1] with str[n-2]...
+    // Agar koi mismatch mile to isPalin = 0
+
+    if (isPalin)
+        printf("PALINDROME");
+    else
+        printf("NOT PALINDROME");
+    return 0;
+}`,
+    hint: 'for(i=0; i<n/2; i++) loop chalao. if(str[i] != str[n-1-i]) isPalin = 0; break; karo. Loop ke baad isPalin check karo.',
+    keywords: [['for', 'while'], ['isPalin', 'palin', 'str[', 'n-1'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+<span class="mc">#include</span> <span class="st">&lt;string.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">char</span> str[] = <span class="st">"madam"</span>;
+    <span class="kw">int</span> n = <span class="fn">strlen</span>(str);
+    <span class="kw">int</span> isPalin = <span class="nm">1</span>, i;  <span class="cm">// 1 = assume palindrome</span>
+
+    <span class="kw">for</span> (i = <span class="nm">0</span>; i < n / <span class="nm">2</span>; i++) {
+        <span class="kw">if</span> (str[i] != str[n - <span class="nm">1</span> - i]) {  <span class="cm">// mismatch mila</span>
+            isPalin = <span class="nm">0</span>;
+            <span class="kw">break</span>;
+        }
+    }
+
+    <span class="fn">printf</span>(isPalin ? <span class="st">"PALINDROME"</span> : <span class="st">"NOT PALINDROME"</span>);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: PALINDROME  ("madam" same forward & backward)</span>`
+  },
+
+  {
+    lang: 'c', title: 'Search in Array',
+    desc: 'Array mein koi element dhundo (linear search). Agar element milta hai to uska index print karo, nahi mila to "Not Found" print karo.',
+    inputEx: 'arr={5,3,8,1,9}, key=8', outputEx: 'Found at index 2',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int arr[] = {5, 3, 8, 1, 9};
+    int n = 5, key = 8, found = -1;
+
+    // Loop through array
+    // Agar arr[i] == key to found = i karo aur break
+
+    if (found != -1)
+        printf("Found at index %d", found);
+    else
+        printf("Not Found");
+    return 0;
+}`,
+    hint: 'for(i=0; i<n; i++) loop chalao. if(arr[i] == key) { found = i; break; } karo. Baad mein found == -1 check karo.',
+    keywords: [['for', 'while'], ['key', 'found', 'arr[', '=='], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> arr[] = {<span class="nm">5</span>, <span class="nm">3</span>, <span class="nm">8</span>, <span class="nm">1</span>, <span class="nm">9</span>};
+    <span class="kw">int</span> n = <span class="nm">5</span>, key = <span class="nm">8</span>, found = <span class="nm">-1</span>, i;
+
+    <span class="kw">for</span> (i = <span class="nm">0</span>; i < n; i++) {
+        <span class="kw">if</span> (arr[i] == key) {  <span class="cm">// element mil gaya</span>
+            found = i;
+            <span class="kw">break</span>;            <span class="cm">// aage search karne ki zaroorat nahi</span>
+        }
+    }
+
+    <span class="kw">if</span> (found != <span class="nm">-1</span>)
+        <span class="fn">printf</span>(<span class="st">"Found at index %d"</span>, found);
+    <span class="kw">else</span>
+        <span class="fn">printf</span>(<span class="st">"Not Found"</span>);
+
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Found at index 2</span>`
+  },
+
+  {
+    lang: 'c', title: 'Concatenate Two Strings',
+    desc: 'Do strings ko bina strcat() use kiye jodo. str1="Hello" + str2=" World" → "Hello World". Manually loop se append karo.',
+    inputEx: 'str1="Hello" str2=" World"', outputEx: 'Hello World',
+    template:
+`#include <stdio.h>
+#include <string.h>
+
+int main() {
+    char str1[50] = "Hello";
+    char str2[] = " World";
+    int i = strlen(str1), j = 0;
+
+    // str2 ke characters ek-ek karke str1 ke end mein add karo
+    // str1[i+j] = str2[j] pattern use karo
+
+    printf("%s", str1);
+    return 0;
+}`,
+    hint: 'strlen(str1) se i start karo. while(str2[j] != \'\\0\') loop chalao. str1[i] = str2[j] karo, dono ko increment karo. Loop ke baad str1[i] = \'\\0\' karo.',
+    keywords: [['while', 'for'], ['str1[', 'str2[', 'strlen', 'j'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+<span class="mc">#include</span> <span class="st">&lt;string.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">char</span> str1[<span class="nm">50</span>] = <span class="st">"Hello"</span>;
+    <span class="kw">char</span> str2[] = <span class="st">" World"</span>;
+    <span class="kw">int</span> i = <span class="fn">strlen</span>(str1);  <span class="cm">// str1 ke end se start karo</span>
+    <span class="kw">int</span> j = <span class="nm">0</span>;
+
+    <span class="kw">while</span> (str2[j] != <span class="st">'\0'</span>) {
+        str1[i] = str2[j];  <span class="cm">// str2 ka character str1 mein copy karo</span>
+        i++;
+        j++;
+    }
+    str1[i] = <span class="st">'\0'</span>;  <span class="cm">// string terminate karo</span>
+
+    <span class="fn">printf</span>(<span class="st">"%s"</span>, str1);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Hello World</span>`
+  },
+
+  {
+    lang: 'c', title: 'Read & Display Matrix',
+    desc: '2D array (matrix) ko read karke display karo. 3x3 matrix print karo jisme rows aur columns properly aligned hon.',
+    inputEx: '3x3 matrix',
+    outputEx: '1 2 3\n4 5 6\n7 8 9',
+    template:
+`#include <stdio.h>
+
+int main() {
+    int mat[3][3] = {
+        {1, 2, 3},
+        {4, 5, 6},
+        {7, 8, 9}
+    };
+
+    // Nested loop use karo matrix print karne ke liye
+    // Outer loop: rows, Inner loop: columns
+
+    return 0;
+}`,
+    hint: 'Outer loop: for(i=0; i<3; i++). Inner loop: for(j=0; j<3; j++) printf("%d ", mat[i][j]). Outer loop ke end mein printf("\\n") karo.',
+    keywords: [['for'], ['mat', 'matrix', '[i][j]', '[i]'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> mat[<span class="nm">3</span>][<span class="nm">3</span>] = {
+        {<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>},
+        {<span class="nm">4</span>, <span class="nm">5</span>, <span class="nm">6</span>},
+        {<span class="nm">7</span>, <span class="nm">8</span>, <span class="nm">9</span>}
+    };
+    <span class="kw">int</span> i, j;
+
+    <span class="kw">for</span> (i = <span class="nm">0</span>; i < <span class="nm">3</span>; i++) {          <span class="cm">// rows</span>
+        <span class="kw">for</span> (j = <span class="nm">0</span>; j < <span class="nm">3</span>; j++) {      <span class="cm">// columns</span>
+            <span class="fn">printf</span>(<span class="st">"%d "</span>, mat[i][j]);
+        }
+        <span class="fn">printf</span>(<span class="st">"\\n"</span>);  <span class="cm">// next row</span>
+    }
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output:
+// 1 2 3
+// 4 5 6
+// 7 8 9</span>`
+  },
+
+  /* =============================================
+     GROUP: FUNCTIONS
+     ============================================= */
+  {
+    lang: 'c', title: 'Average using Function',
+    desc: 'Ek user-defined function "Avg_Fun" banao jo N natural numbers ka average calculate kare. Main function se call karo aur result print karo.',
+    inputEx: 'n = 5', outputEx: 'Average = 3.00',
+    template:
+`#include <stdio.h>
+
+// Function declaration
+float Avg_Fun(int n);
+
+int main() {
+    int n = 5;
+    float result = Avg_Fun(n);
+    printf("Average = %.2f", result);
+    return 0;
+}
+
+// Function definition
+float Avg_Fun(int n) {
+    // 1 se n tak ka sum nikalo
+    // average = sum / n return karo
+}`,
+    hint: 'Function mein: int sum=0; for loop se sum nikalo. Phir return (float)sum / n; karo. (float) cast karna mat bhoolo!',
+    keywords: [['Avg_Fun', 'avg', 'float', 'return'], ['for', 'while', 'sum'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="cm">// Function: 1 se n tak ka average return karta hai</span>
+<span class="kw">float</span> <span class="fn">Avg_Fun</span>(<span class="kw">int</span> n) {
+    <span class="kw">int</span> i, sum = <span class="nm">0</span>;
+    <span class="kw">for</span> (i = <span class="nm">1</span>; i <= n; i++)
+        sum += i;               <span class="cm">// 1+2+3+4+5 = 15</span>
+    <span class="kw">return</span> (<span class="kw">float</span>)sum / n;     <span class="cm">// (float) cast — decimal result ke liye</span>
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="fn">printf</span>(<span class="st">"Average = %.2f"</span>, <span class="fn">Avg_Fun</span>(<span class="nm">5</span>));
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Average = 3.00</span>`
+  },
+
+  {
+    lang: 'c', title: 'Area & Circumference (Function)',
+    desc: 'Functions use karke circle ki area aur circumference calculate karo. Radius parameter ke roop mein pass karo. radius=7 ke liye area aur circumference print karo.',
+    inputEx: 'radius = 7', outputEx: 'Area=153.94  Circumference=43.98',
+    template:
+`#include <stdio.h>
+#define PI 3.14159
+
+// Declare two functions: area() and circumference()
+
+int main() {
+    float r = 7.0;
+    // Call both functions and print results
+    return 0;
+}`,
+    hint: 'float area(float r) { return PI * r * r; } aur float circumference(float r) { return 2 * PI * r; } banao. Main se call karo.',
+    keywords: [['area', 'circumference', 'PI', 'return'], ['*', 'r', 'radius'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+<span class="mc">#define</span> PI <span class="nm">3.14159</span>  <span class="cm">// constant define karo</span>
+
+<span class="kw">float</span> <span class="fn">area</span>(<span class="kw">float</span> r) {
+    <span class="kw">return</span> PI * r * r;   <span class="cm">// formula: πr²</span>
+}
+
+<span class="kw">float</span> <span class="fn">circumference</span>(<span class="kw">float</span> r) {
+    <span class="kw">return</span> <span class="nm">2</span> * PI * r;  <span class="cm">// formula: 2πr</span>
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">float</span> r = <span class="nm">7.0</span>;
+    <span class="fn">printf</span>(<span class="st">"Area          = %.2f\\n"</span>, <span class="fn">area</span>(r));
+    <span class="fn">printf</span>(<span class="st">"Circumference = %.2f\\n"</span>, <span class="fn">circumference</span>(r));
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Area = 153.94  Circumference = 43.98</span>`
+  },
+
+  {
+    lang: 'c', title: 'Leap Year Function',
+    desc: 'Ek function "is_leap_year" banao jo year check kare. Leap year: 4 se divisible ho, lekin 100 se nahi — ya 400 se divisible ho. 2024 → Leap Year.',
+    inputEx: 'year = 2024', outputEx: '2024 is a Leap Year',
+    template:
+`#include <stdio.h>
+
+// Function declaration
+int is_leap_year(int year);
+
+int main() {
+    int year = 2024;
+    if (is_leap_year(year))
+        printf("%d is a Leap Year", year);
+    else
+        printf("%d is Not a Leap Year", year);
+    return 0;
+}
+
+int is_leap_year(int year) {
+    // Return 1 if leap year, 0 if not
+    // Condition: (year%4==0 && year%100!=0) || year%400==0
+}`,
+    hint: 'return ((year%4==0 && year%100!=0) || (year%400==0)); — yeh ek line mein poora check kar deta hai. 1 return matlab leap year.',
+    keywords: [['is_leap_year', 'leap', 'return'], ['%', '400', '100', '4'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="cm">// Returns 1 if leap year, 0 if not</span>
+<span class="kw">int</span> <span class="fn">is_leap_year</span>(<span class="kw">int</span> year) {
+    <span class="cm">// Divisible by 400   → always leap year
+    // Divisible by 100   → NOT leap year
+    // Divisible by 4     → leap year</span>
+    <span class="kw">return</span> ((year % <span class="nm">4</span> == <span class="nm">0</span> && year % <span class="nm">100</span> != <span class="nm">0</span>) || (year % <span class="nm">400</span> == <span class="nm">0</span>));
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> year = <span class="nm">2024</span>;
+    <span class="kw">if</span> (<span class="fn">is_leap_year</span>(year))
+        <span class="fn">printf</span>(<span class="st">"%d is a Leap Year"</span>, year);
+    <span class="kw">else</span>
+        <span class="fn">printf</span>(<span class="st">"%d is Not a Leap Year"</span>, year);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: 2024 is a Leap Year</span>`
+  },
+
+  {
+    lang: 'c', title: 'Factorial using Function',
+    desc: 'User-defined function banao jo number ka factorial calculate kare. Main function se call karo. n=5 ke liye 5! = 120.',
+    inputEx: 'n = 5', outputEx: 'Factorial = 120',
+    template:
+`#include <stdio.h>
+
+int factorial(int n);
+
+int main() {
+    int n = 5;
+    printf("Factorial = %d", factorial(n));
+    return 0;
+}
+
+int factorial(int n) {
+    // result = 1 se start karo
+    // loop se 1 to n tak multiply karo
+    // result return karo
+}`,
+    hint: 'int result=1; for(i=1; i<=n; i++) result *= i; return result; — yeh loop function ke andar likhna hai.',
+    keywords: [['factorial', 'return', 'result'], ['for', 'while', '*'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="cm">// Function: n ka factorial calculate karke return karta hai</span>
+<span class="kw">int</span> <span class="fn">factorial</span>(<span class="kw">int</span> n) {
+    <span class="kw">int</span> i, result = <span class="nm">1</span>;
+    <span class="kw">for</span> (i = <span class="nm">1</span>; i <= n; i++)
+        result *= i;   <span class="cm">// 1×2×3×4×5 = 120</span>
+    <span class="kw">return</span> result;
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> n = <span class="nm">5</span>;
+    <span class="fn">printf</span>(<span class="st">"Factorial of %d = %d"</span>, n, <span class="fn">factorial</span>(n));
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Factorial of 5 = 120</span>`
+  },
+
+  {
+    lang: 'c', title: 'Largest of Three (Function)',
+    desc: 'Teen numbers mein se sabse bada number dhundhne ke liye function banao. Teeno numbers parameter ke roop mein pass karo.',
+    inputEx: 'a=10, b=35, c=22', outputEx: 'Largest = 35',
+    template:
+`#include <stdio.h>
+
+int largest(int a, int b, int c);
+
+int main() {
+    printf("Largest = %d", largest(10, 35, 22));
+    return 0;
+}
+
+int largest(int a, int b, int c) {
+    // Compare a, b, c using if-else
+    // Sabse bada value return karo
+}`,
+    hint: 'if(a>=b && a>=c) return a; else if(b>=a && b>=c) return b; else return c; — teen comparisons karo.',
+    keywords: [['largest', 'return', 'max'], ['if', '>', '>='], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="cm">// Function: teen numbers mein se sabse bada return karta hai</span>
+<span class="kw">int</span> <span class="fn">largest</span>(<span class="kw">int</span> a, <span class="kw">int</span> b, <span class="kw">int</span> c) {
+    <span class="kw">if</span> (a >= b && a >= c)       <span class="cm">// a sabse bada hai</span>
+        <span class="kw">return</span> a;
+    <span class="kw">else if</span> (b >= a && b >= c)  <span class="cm">// b sabse bada hai</span>
+        <span class="kw">return</span> b;
+    <span class="kw">else</span>
+        <span class="kw">return</span> c;              <span class="cm">// c sabse bada hai</span>
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="fn">printf</span>(<span class="st">"Largest = %d"</span>, <span class="fn">largest</span>(<span class="nm">10</span>, <span class="nm">35</span>, <span class="nm">22</span>));
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Largest = 35</span>`
+  },
+
+  {
+    lang: 'c', title: 'Swap using Pointers',
+    desc: 'Pointers use karke do numbers swap karo. Call by reference se original values change hoti hain. a=5, b=10 → a=10, b=5.',
+    inputEx: 'a=5, b=10', outputEx: 'After swap: a=10  b=5',
+    template:
+`#include <stdio.h>
+
+void swap(int *x, int *y);
+
+int main() {
+    int a = 5, b = 10;
+    swap(&a, &b);
+    printf("After swap: a=%d  b=%d", a, b);
+    return 0;
+}
+
+void swap(int *x, int *y) {
+    // temp variable use karo
+    // *x aur *y ki values exchange karo
+}`,
+    hint: 'int temp = *x; *x = *y; *y = temp; — asterisk (*) pointer ko dereference karta hai, matlab actual value access karta hai.',
+    keywords: [['swap', '*x', '*y', 'pointer', 'temp'], ['*', '&'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="cm">// *x aur *y = pointer se actual variable ki value access karna</span>
+<span class="kw">void</span> <span class="fn">swap</span>(<span class="kw">int</span> *x, <span class="kw">int</span> *y) {
+    <span class="kw">int</span> temp = *x;  <span class="cm">// x ki value temp mein save karo</span>
+    *x = *y;        <span class="cm">// x mein y ki value daalo</span>
+    *y = temp;      <span class="cm">// y mein purani x (temp) daalo</span>
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">int</span> a = <span class="nm">5</span>, b = <span class="nm">10</span>;
+    <span class="fn">swap</span>(&a, &b);   <span class="cm">// & se address pass karo (call by reference)</span>
+    <span class="fn">printf</span>(<span class="st">"a = %d, b = %d"</span>, a, b);
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: a = 10, b = 5</span>`
+  },
+
+  {
+    lang: 'c', title: 'Power using Recursion',
+    desc: 'Recursive function banao jo base ka exponent power calculate kare. 2^8 = 256. Function khud ko call karta hai jab tak exponent 0 na ho jaaye.',
+    inputEx: 'base=2, exp=8', outputEx: 'Power = 256',
+    template:
+`#include <stdio.h>
+
+int power(int base, int exp);
+
+int main() {
+    printf("Power = %d", power(2, 8));
+    return 0;
+}
+
+int power(int base, int exp) {
+    // Base case: agar exp == 0 to 1 return karo
+    // Recursive case: base * power(base, exp-1)
+}`,
+    hint: 'if(exp == 0) return 1; — yeh base case hai. else return base * power(base, exp-1); — yeh recursive call hai. Har call mein exp ek kam hota hai.',
+    keywords: [['power', 'return', 'recursive', 'recur'], ['exp', 'base', '*'], ['printf']],
+    solution:
+`<span class="mc">#include</span> <span class="st">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">power</span>(<span class="kw">int</span> base, <span class="kw">int</span> exp) {
+    <span class="kw">if</span> (exp == <span class="nm">0</span>)
+        <span class="kw">return</span> <span class="nm">1</span>;                          <span class="cm">// base case: x^0 = 1</span>
+    <span class="kw">return</span> base * <span class="fn">power</span>(base, exp - <span class="nm">1</span>);  <span class="cm">// recursive call</span>
+}
+<span class="cm">// How it works for power(2,3):
+//   2 * power(2,2)
+//       2 * power(2,1)
+//           2 * power(2,0) → returns 1
+//       = 2 * 1 = 2
+//   = 2 * 2 = 4 ... and so on till 2^8 = 256</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="fn">printf</span>(<span class="st">"Power = %d"</span>, <span class="fn">power</span>(<span class="nm">2</span>, <span class="nm">8</span>));
+    <span class="kw">return</span> <span class="nm">0</span>;
+}
+<span class="cm">// Output: Power = 256</span>`
+  }
+];
+
+/* =============================================
+   STATE
+   ============================================= */
+let currentIdx  = -1;
+let currentQ    = null;
+let score       = 0;
+let solvedSet   = new Set();
+let activeRPTab = 'output';
+let cachedOutput = '';
+
+/* =============================================
+   INIT
+   ============================================= */
+function init() {
+  const cDiv  = document.getElementById('cItems');
+  const pyDiv = document.getElementById('pyItems');
+  cDiv.innerHTML = '';
+  pyDiv.innerHTML = '';
+
+  questions.forEach((q, i) => {
+    const ext = q.lang === 'c' ? '.c' : '.py';
+    const div = document.createElement('div');
+    div.className = 'sidebar-item' + (solvedSet.has(i) ? ' solved' : '');
+    div.id = 'si-' + i;
+    div.innerHTML = `
+      <span class="item-icon">${q.lang === 'c' ? '🔵' : '🐍'}</span>
+      ${q.title}${ext}
+      <span class="solved-dot"></span>`;
+    div.onclick = () => openQuestion(i);
+    (q.lang === 'c' ? cDiv : pyDiv).appendChild(div);
+  });
+
+  updateScore();
+}
+
+/* =============================================
+   SWITCH LANGUAGE
+   ============================================= */
+function switchLang(lang) {
+  const first = questions.findIndex(q => q.lang === lang);
+  if (first >= 0) openQuestion(first);
+}
+
+/* =============================================
+   OPEN QUESTION
+   ============================================= */
+function openQuestion(idx) {
+  currentIdx = idx;
+  currentQ   = questions[idx];
+
+  // Sidebar active
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  const si = document.getElementById('si-' + idx);
+  if (si) si.classList.add('active');
+
+  // Fill question panel
+  document.getElementById('qNum').textContent     = 'Q' + (idx + 1);
+  document.getElementById('qTitle').textContent   = currentQ.title;
+  document.getElementById('qDesc').textContent    = currentQ.desc;
+  document.getElementById('qInputEx').textContent  = currentQ.inputEx;
+  document.getElementById('qOutputEx').textContent = currentQ.outputEx;
+
+  const badge = document.getElementById('qBadge');
+  badge.textContent = currentQ.lang === 'c' ? 'C' : 'Python';
+  badge.className = 'q-lang-badge ' + (currentQ.lang === 'c' ? 'c-badge' : 'py-badge');
+
+  // Load template into editor and set syntax mode
+  editor.setValue(currentQ.template);
+  editor.setOption('mode', currentQ.lang === 'c' ? 'text/x-csrc' : 'python');
+
+  // Switch screens
+  document.getElementById('welcomeScreen').style.display = 'none';
+  const es = document.getElementById('editorScreen');
+  es.style.display = 'flex';
+  es.style.flexDirection = 'column';
+
+  // Show right panel
+  document.getElementById('rightPanel').style.display = 'flex';
+
+  // Reset output
+  cachedOutput = `<div class="terminal"><span class="term-info">// Click "Run &amp; Check" to evaluate your code</span></div>`;
+  activeRPTab = 'output';
+  renderRPTab('output');
+
+  // Update tabs bar
+  const bar = document.getElementById('tabsBar');
+  const ext = currentQ.lang === 'c' ? '.c' : '.py';
+  const icon = currentQ.lang === 'c' ? '🔵' : '🐍';
+  bar.innerHTML = `
+    <div class="tab" onclick="showWelcome()"><span>🏠</span> welcome.md <span class="tab-close">×</span></div>
+    <div class="tab active"><span>${icon}</span> ${currentQ.title}${ext} <span class="tab-close">×</span></div>`;
+
+  // Titlebar / statusbar
+  document.getElementById('titlebarName').textContent = `CodeLab — ${currentQ.title}${ext}`;
+  document.getElementById('sbLang').textContent = currentQ.lang === 'c' ? 'C Language' : 'Python 3';
+  document.getElementById('sbStatus').textContent = 'Editing...';
+  document.getElementById('statusbar').className =
+    'statusbar ' + (currentQ.lang === 'c' ? 'statusbar-c' : 'statusbar-py');
+
+  document.getElementById('codeEditor').focus();
+}
+
+/* =============================================
+   SHOW WELCOME
+   ============================================= */
+function showWelcome() {
+  currentIdx = -1; currentQ = null;
+  document.getElementById('welcomeScreen').style.display = 'flex';
+  document.getElementById('editorScreen').style.display  = 'none';
+  document.getElementById('rightPanel').style.display    = 'none';
+  document.getElementById('titlebarName').textContent    = 'CodeLab — Welcome';
+  document.getElementById('sbLang').textContent    = 'Select a question';
+  document.getElementById('sbStatus').textContent  = 'Ready';
+  document.getElementById('statusbar').className   = 'statusbar';
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('tabsBar').innerHTML =
+    `<div class="tab active" onclick="showWelcome()"><span>🏠</span> welcome.md <span class="tab-close">×</span></div>`;
+}
+
+/* =============================================
+   CODEMIRROR INIT
+   ============================================= */
+let editor; // global CodeMirror instance
+
+function initEditor() {
+  editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+    lineNumbers:  true,
+    theme:        'material-darker',
+    mode:         'text/x-csrc',   // default; switched per question
+    indentUnit:   4,
+    tabSize:      4,
+    lineWrapping: true,
+    autofocus:    false
+  });
+
+  editor.setSize('100%', '100%');
+
+  // Update statusbar cursor position on CodeMirror cursor move
+  editor.on('cursorActivity', () => {
+    const cur = editor.getCursor();
+    document.getElementById('sbCursor').textContent =
+      `Ln ${cur.line + 1}, Col ${cur.ch + 1}`;
+  });
+}
+
+/* =============================================
+   CHECK CODE (keyword-based logic check)
+   ============================================= */
+function checkCode() {
+  if (!currentQ) return;
+  const code  = editor.getValue();
+  const lower = code.toLowerCase();
+
+  // Guard: unchanged template
+  if (code.replace(/\s/g, '') === currentQ.template.replace(/\s/g, '')) {
+    cachedOutput =
+      `<div class="expected-box"><div class="exp-label">Expected Output</div><code>${currentQ.outputEx}</code></div>` +
+      `<div class="terminal"><span class="term-err">✗ Code is unchanged!</span>\n\n<span class="term-info">Write your solution in the editor above, then run again.</span></div>`;
+    showRPTab('output');
+    document.getElementById('sbStatus').textContent = 'Unchanged';
+    return;
+  }
+
+  // Keyword check: each group must have at least one match
+  const failedGroups = [];
+  currentQ.keywords.forEach(group => {
+    if (!group.some(kw => lower.includes(kw.toLowerCase()))) {
+      failedGroups.push(group);
+    }
+  });
+
+  const expBox =
+    `<div class="expected-box"><div class="exp-label">Expected Output</div><code>${currentQ.outputEx}</code></div>`;
+
+  if (failedGroups.length === 0) {
+    // ✓ Correct
+    if (!solvedSet.has(currentIdx)) {
+      score++;
+      solvedSet.add(currentIdx);
+      updateScore();
+      const si = document.getElementById('si-' + currentIdx);
+      if (si) si.classList.add('solved');
+    }
+    const ext = currentQ.lang === 'c' ? 'gcc' : 'python3';
+    cachedOutput = expBox +
+      `<div class="terminal">` +
+      `<span class="term-prompt">$ ${ext} solution${currentQ.lang === 'c' ? '.c' : '.py'}</span>\n\n` +
+      `<span class="term-ok">✓ Logic keywords found — looks correct!</span>\n\n` +
+      `<span style="color:var(--tok-number)">Expected: </span><span style="color:var(--tok-string)">${currentQ.outputEx}</span>\n` +
+      `<span style="color:var(--tok-number)">Keywords: </span><span style="color:var(--accent2)">✓ all present</span>\n\n` +
+      `<span class="term-ok">🎉 +1 point! Score: ${score} / ${questions.length}</span>` +
+      `</div>`;
+    document.getElementById('sbStatus').textContent = '✓ Correct!';
+  } else {
+    const missing = failedGroups.map(g => '"' + g[0] + '"').join(', ');
+    cachedOutput = expBox +
+      `<div class="terminal">` +
+      `<span class="term-err">✗ Not quite right yet.</span>\n\n` +
+      `<span style="color:var(--text-dim)">Expected output: </span><span style="color:var(--tok-string)">${currentQ.outputEx}</span>\n\n` +
+      `<span style="color:var(--warn)">Missing logic for: </span><span style="color:var(--text)">${missing}</span>\n\n` +
+      `<span class="term-info">💡 Click the "Hint" tab for guidance.</span>` +
+      `</div>`;
+    document.getElementById('sbStatus').textContent = '✗ Try again';
+  }
+
+  showRPTab('output');
+}
+
+/* =============================================
+   RIGHT PANEL TABS
+   ============================================= */
+function showRPTab(tab) {
+  activeRPTab = tab;
+  ['output','hint','solution','ai'].forEach(t => {
+    document.getElementById('rpt-' + t).classList.toggle('active', t === tab);
+  });
+  renderRPTab(tab);
+}
+
+/* =============================================
+   AI HELP — keyword-based code snippets
+   ============================================= */
+const aiResponses = {
+  'factorial':  'C:\nint n=5, f=1;\nfor(int i=1; i<=n; i++) f*=i;\nprintf("%d", f); // 120\n\nPython:\nn=5\nf=1\nfor i in range(1, n+1):\n    f *= i\nprint(f) # 120',
+  'prime':      'C:\nint isPrime=1;\nfor(int i=2; i<n; i++)\n  if(n%i==0){ isPrime=0; break; }\n\nPython:\nis_prime = all(n%i != 0 for i in range(2,n))\nprint("PRIME" if is_prime else "NOT PRIME")',
+  'palindrome': 'Python:\ns = "racecar"\nif s == s[::-1]:\n    print("PALINDROME")\nelse:\n    print("NOT PALINDROME")',
+  'fibonacci':  'Python:\na, b = 0, 1\nfor _ in range(7):\n    print(a, end=" ")\n    a, b = b, a+b\n# Output: 0 1 1 2 3 5 8',
+  'even':       'C:\nif(n % 2 == 0) printf("EVEN");\nelse printf("ODD");\n\nPython:\nprint("EVEN" if n%2==0 else "ODD")',
+  'odd':        'C:\nif(n % 2 == 0) printf("EVEN");\nelse printf("ODD");\n\nPython:\nprint("EVEN" if n%2==0 else "ODD")',
+  'digit':      'Python:\nn = 1234\ntotal = sum(int(d) for d in str(n))\nprint(total) # 10',
+  'loop':       'C for loop:\nfor(int i=0; i<n; i++) { ... }\n\nPython for loop:\nfor i in range(n):\n    ...',
+  'array':      'C:\nint arr[] = {1,2,3};\nfor(int i=0; i<3; i++) printf("%d ", arr[i]);\n\nPython:\narr = [1,2,3]\nfor x in arr: print(x)',
+};
+
+function renderAI() {
+  document.getElementById('rpContent').innerHTML = `
+    <div style="margin-bottom:10px;">
+      <div style="color:var(--text-dim);font-size:.72rem;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">
+        🤖 AI Help — type a keyword
+      </div>
+      <input id="aiInput"
+        placeholder="e.g. factorial, prime, loop..."
+        style="width:100%;padding:8px 10px;background:#0c0c0c;border:1px solid var(--ed-border);
+               border-radius:var(--radius);color:var(--text);font-family:var(--font-code);
+               font-size:.82rem;outline:none;"
+        onkeydown="if(event.key==='Enter') askAI()"
+      />
+      <button onclick="askAI()"
+        style="margin-top:7px;width:100%;padding:7px;background:var(--accent);color:#fff;
+               border:none;border-radius:var(--radius);font-family:var(--font-ui);
+               font-weight:600;font-size:.82rem;cursor:pointer;">
+        Ask →
+      </button>
+    </div>
+    <div id="aiOutput" class="terminal" style="min-height:80px;white-space:pre-wrap;">
+<span class="term-info">// Type a topic above and press Ask</span></div>
+    <div style="color:var(--text-dim);font-size:.72rem;margin-top:8px;line-height:1.6;">
+      Try: factorial · prime · palindrome · fibonacci · even · digit · loop · array
+    </div>
+  `;
+  // Focus the input after render
+  setTimeout(() => {
+    const inp = document.getElementById('aiInput');
+    if (inp) inp.focus();
+  }, 50);
+}
+
+function askAI() {
+  const inp = document.getElementById('aiInput');
+  if (!inp) return;
+  const q = inp.value.toLowerCase().trim();
+
+  if (!q) {
+    document.getElementById('aiOutput').innerHTML =
+      `<span class="term-err">⚠ Please type a keyword first.</span>`;
+    return;
+  }
+
+  let found = null;
+  for (const key in aiResponses) {
+    if (q.includes(key)) { found = aiResponses[key]; break; }
+  }
+
+  document.getElementById('aiOutput').innerText = found ||
+    '❓ No match found.\nTry keywords like: factorial, prime, palindrome, fibonacci, even, digit, loop, array';
+}
+
+function renderRPTab(tab) {
+  if (!currentQ) return;
+  const rp = document.getElementById('rpContent');
+
+  if (tab === 'output') {
+    rp.innerHTML = cachedOutput ||
+      `<div class="terminal"><span class="term-info">// Press "Run &amp; Check" to see results</span></div>`;
+  } else if (tab === 'hint') {
+    rp.innerHTML =
+      `<div class="hint-box"><div class="hint-title">💡 Hint</div>${currentQ.hint}</div>` +
+      `<div style="color:var(--text-dim);font-size:.78rem;line-height:1.6;margin-top:8px;">` +
+      `Try to figure it out using just the hint before looking at the full solution!</div>`;
+  } else if (tab === 'solution') {
+    const ext  = currentQ.lang === 'c' ? '🔵 solution.c' : '🐍 solution.py';
+    rp.innerHTML =
+      `<div class="solution-block">` +
+      `<div class="sol-header">${ext}</div>` +
+      `<pre>${currentQ.solution}</pre>` +
+      `</div>` +
+      `<div style="color:var(--text-dim);font-size:.76rem;margin-top:10px;line-height:1.6;">` +
+      `Understanding the logic matters more than memorizing code. Read it carefully!</div>`;
+  } else if (tab === 'ai') {
+    renderAI();
+  }
+}
+
+/* =============================================
+   RESET CODE
+   ============================================= */
+function resetCode() {
+  if (!currentQ) return;
+  editor.setValue(currentQ.template);
+  document.getElementById('sbStatus').textContent = 'Reset';
+}
+
+/* =============================================
+   NEXT QUESTION
+   ============================================= */
+function nextQuestion() {
+  if (currentIdx < 0) return;
+  const next = currentIdx + 1;
+  if (next < questions.length) {
+    openQuestion(next);
+  } else {
+    showAllDone();
+  }
+}
+
+/* =============================================
+   ALL DONE
+   ============================================= */
+function showAllDone() {
+  document.getElementById('rightPanel').style.display = 'flex';
+  activeRPTab = 'output';
+  ['output','hint','solution'].forEach(t => {
+    document.getElementById('rpt-' + t).classList.toggle('active', t === 'output');
+  });
+  document.getElementById('rpContent').innerHTML =
+    `<div style="text-align:center;padding:20px 10px;">` +
+    `<div style="font-size:2.4rem;margin-bottom:10px;">🏆</div>` +
+    `<div style="font-family:var(--font-ui);font-size:1.1rem;font-weight:800;color:var(--text-bright);margin-bottom:6px;">All Done!</div>` +
+    `<div style="color:var(--text-dim);font-size:.82rem;margin-bottom:14px;">You completed all ${questions.length} questions!</div>` +
+    `<div style="font-family:var(--font-code);font-size:2rem;font-weight:700;color:var(--accent2);margin-bottom:14px;">${score} / ${questions.length}</div>` +
+    `<button class="btn btn-run" style="margin:0 auto;display:flex;" onclick="restartAll()">↺ Start Over</button>` +
+    `</div>`;
+}
+
+/* =============================================
+   RESTART
+   ============================================= */
+function restartAll() {
+  score = 0; solvedSet.clear(); cachedOutput = '';
+  currentQ = null; currentIdx = -1;
+  init();
+  showWelcome();
+}
+
+/* =============================================
+   UPDATE SCORE
+   ============================================= */
+function updateScore() {
+  document.getElementById('sbScore').textContent = score;
+  document.getElementById('sbTotal').textContent = questions.length;
+  document.getElementById('scoreBarFill').style.width =
+    Math.round((score / questions.length) * 100) + '%';
+}
+
+/* ---- BOOT ---- */
+init();
+initEditor();
+</script>
+</body>
+</html>
